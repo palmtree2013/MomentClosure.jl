@@ -1,6 +1,6 @@
 # [Using MomentClosure](@id main_tutorial)
 
-This tutorial is an introduction to using MomentClosure to define chemical reaction network models, generate the corresponding moment equations, apply moment closure approximations and finally solve the resulting system of ODEs. To demonstrate this functionality, we will consider a specific case of an oscillatory chemical system known as the Brusselator, characterised by the reactions [1]
+This tutorial is an introduction to using MomentClosure to define chemical reaction network models, generate the corresponding moment equations, apply moment closure approximations and finally solve the resulting system of ODEs. To demonstrate this functionality, we will consider a specific case of an oscillatory chemical system known as the Brusselator, characterised by the reactions
 ```math
 \begin{align*}
 2X + Y &\stackrel{c_1}{\rightarrow} 3X, \\
@@ -8,7 +8,7 @@ X &\stackrel{c_2}{\rightarrow} Y, \\
 ∅ &\underset{c_4}{\stackrel{c_3}{\rightleftharpoons}} X.
 \end{align*}
 ```
-We have chosen this particular model to start with as it has been studied with different moment closures before by Schnoerr et al. (2015) [1] and so it is useful as a reference point. The plots of moment trajectories we obtain in this tutorial fully reproduce some of the figures published in the paper, hence (partially) proving the validity of our implementation.
+We have chosen this particular model to start with as it has been studied with different moment closures before by [Schnoerr et al. (2015)](https://doi.org/10.1063/1.4934990) and so it is useful as a reference point. The plots of moment trajectories we obtain in this tutorial fully reproduce some of the figures published in the paper, hence (partially) proving the validity of our implementation.
 
 The terminology and the notation used throughout is consistent with the **Theory** section of the docs and we advise giving it a skim-through.
 
@@ -25,7 +25,7 @@ end c₁ c₂ c₃ c₄ Ω
 ```
 The returned `rn` is an instance of [`ModelingToolkit.ReactionSystem`](https://catalyst.sciml.ai/stable/api/catalyst_api/#ModelingToolkit.ReactionSystem). Note that we have also included the system-size parameter $\Omega$ which will be of interest later on looking at the system's dynamics.
 
-**Alternatively**, models can be defined as a MomentClosure's built-in [`ReactionSystemMod`](@ref) by considering the net stoichiometry matrix, $S$, and a vector of the corresponding reaction propensity functions, $\mathbf{a}$. As in Catalyst, the model specification is based on the rich symbolic-numeric modelling framework provided by [ModelingToolkit.jl](https://github.com/SciML/ModelingToolkit.jl) (TODO: change this to Symbolics.jl?). Note that we have to explicitly define the molecule numbers of each chemical species as [`ModelingToolkit.@variables`](@ref) and reaction constants as [`ModelingToolkit.@parameters`](@ref). The time, $t$, must also be initialised as a `ModelingToolkit.parameter` and used to indicate the time-dependence of species' variables. The reaction network can then be constructed as follows:
+**Alternatively**, models can be defined as a MomentClosure's built-in [`ReactionSystemMod`](@ref) by considering the net stoichiometry matrix and a vector of the corresponding reaction propensity functions. As in Catalyst, the model specification is based on the rich symbolic-numeric modelling framework provided by [ModelingToolkit.jl](https://github.com/SciML/ModelingToolkit.jl). Note that we have to explicitly define the molecule numbers of each chemical species as [`Symbolics.@variables`](@ref) and reaction constants as [`ModelingToolkit.@parameters`](@ref). The time, $t$, must also be initialised as a `ModelingToolkit.parameter` and used to indicate the time-dependence of species' variables. The reaction network can then be constructed as follows:
 ```julia
 using MomentClosure
 @parameters t, c₁, c₂, c₃, c₄, Ω
@@ -40,9 +40,9 @@ a = [c₁*X*Y*(X-1)/Ω^2, c₂*X, c₃*Ω, c₄*X]
 
 rn2 = ReactionSystemMod(t, [X, Y], [c₁, c₂, c₃, c₄, Ω], a, S_mat)
 ```
-We stress that [`ReactionSystemMod`](@ref), as the name suggests, is a rather trivial extension/modification of [`ModelingToolkit.ReactionSystem`](https://catalyst.sciml.ai/stable/api/catalyst_api/#ModelingToolkit.ReactionSystem). The main motivation behind it is to add support for systems that include reactions whose products are independent geometrically distributed random variables (currently unsupported by Catalyst), see [the auto-regulatory gene network example](gene_network_example.md) for more details. Although [`ReactionSystemMod`](@ref) provides the same basic functions to access network properties as does Catalyst for a `ModelingToolkit.ReactionSystem` ([see the API](@ref api)), its functionality is nowhere near as rich. For example, `ReactionSystemMod` cannot be used directly for [deterministic or stochastic simulations](https://github.com/SciML/DifferentialEquations.jl/) using [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl/). Therefore, we advise using Catalyst for model initialisation whenever possible.
+We stress that [`ReactionSystemMod`](@ref), as the name suggests, is a rather trivial extension/modification of [`ModelingToolkit.ReactionSystem`](https://catalyst.sciml.ai/stable/api/catalyst_api/#ModelingToolkit.ReactionSystem). The main motivation behind it is to add support for systems that include reactions whose products are independent geometrically distributed random variables ([currently unsupported by Catalyst](https://github.com/SciML/Catalyst.jl/issues/308)), see [the auto-regulatory gene network example](gene_network_example.md) for more details. Although [`ReactionSystemMod`](@ref) provides the same basic functions to access network properties as does Catalyst for a `ModelingToolkit.ReactionSystem` ([see the API](@ref api)), its functionality is nowhere near as rich. For example, `ReactionSystemMod` cannot be used directly for [deterministic or stochastic simulations](https://github.com/SciML/DifferentialEquations.jl/) using [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl/). Therefore, we advise using Catalyst for model initialisation whenever possible.
 
-Note that the net stoichiometry matrix and an array of the corresponding propensities, if needed, can be extracted from a `ModelingToolkit.ReactionSystem` using functions [`get_S_mat`](@ref) and [`propensities`](@ref) respectively.
+Note that the net stoichiometry matrix and an array of the corresponding propensities, if needed, can be extracted directly from a `ModelingToolkit.ReactionSystem` using functions [`get_S_mat`](@ref) and [`propensities`](@ref) respectively.
 
 ## Generating Moment Equations
 
@@ -55,13 +55,12 @@ Let's start with the raw moment equations which we choose to generate up to seco
 using MomentClosure
 raw_eqs = generate_raw_moment_eqs(rn, 2, combinatoric_ratelaw=false)
 ```
-Note that we have set `combinatoric_ratelaw=false` in order to ignore the factorial scaling factors which [Catalyst adds to mass-action reactions](https://catalyst.sciml.ai/stable/tutorials/models/#Reaction-rate-laws-used-in-simulations). The function [`generate_raw_moment_eqs`](@ref) returns an instance of [`RawMomentEquations`](@ref MomentClosure.RawMomentEquations) that contains (in addition to a number of utility parameters) a [`ModelingToolkit.ODESystem`](https://mtk.sciml.ai/stable/systems/ODESystem/) composed of all the moment equations which can be accessed with `raw_eqs.odes`.
+Note that we have set `combinatoric_ratelaw=false` in order to ignore the factorial scaling factors which [Catalyst adds to mass-action reactions](https://catalyst.sciml.ai/stable/tutorials/models/#Reaction-rate-laws-used-in-simulations). The function [`generate_raw_moment_eqs`](@ref) returns an instance of [`RawMomentEquations`](@ref MomentClosure.RawMomentEquations) that contains a [`ModelingToolkit.ODESystem`](https://mtk.sciml.ai/stable/systems/ODESystem/) composed of all the moment equations (accessed by `raw_eqs.odes`).
 
-We can use [Latexify](https://github.com/korsbo/Latexify.jl) to look at the generated `ODESystem` directly with `using Latexify; latexify(raw_eqs.odes)`. However, we include an additional function [`format_moment_eqs`](@ref) which in many cases leads to *cleaner* symbolic expressions and can be used as:
+We can use [Latexify](https://github.com/korsbo/Latexify.jl) to look at the generated moment equations:
 ```julia
 using Latexify
-exprs = format_moment_eqs(raw_eqs)
-latexify(exprs, cdot=false, env=:align)
+latexify(raw_eqs)
 ```
 ```math
 \begin{align*}
@@ -95,10 +94,9 @@ The corresponding central moment equations can also be easily generated:
 ```julia
 central_eqs = generate_central_moment_eqs(rn, 2, combinatoric_ratelaw=false)
 ```
-Note that in case of non-polynomial propensity functions the [expansion order $q$](@ref central_moment_eqs) must also be specified, see the [P53 system example](P53_system_example.md) for more details. Luckily, the Brusselator contains only mass-action reactions and hence $q$ is automatically determined by the highest order (polynomial) propensity. The function [`generate_central_moment_eqs`](@ref) returns an instance of [`CentralMomentEquations`](@ref MomentClosure.CentralMomentEquations). Similarly as before, we can visualise the `ODESystem` containing all central moment equations:
+Note that in case of non-polynomial propensity functions the [Taylor expansion order $q$](@ref central_moment_eqs) must also be specified, see the [P53 system example](P53_system_example.md) for more details. Luckily, the Brusselator contains only mass-action reactions and hence $q$ is automatically determined by the highest order (polynomial) propensity. The function [`generate_central_moment_eqs`](@ref) returns an instance of [`CentralMomentEquations`](@ref MomentClosure.CentralMomentEquations). As before, we can visualise the central moment equations:
 ```julia
-exprs = format_moment_eqs(central_eqs)
-latexify(exprs, cdot=false, env=:align)
+latexify(central_eqs)
 ```
 ```math
 \begin{align*}
@@ -122,10 +120,9 @@ Let's apply [normal closure](@ref normal_closure) to the raw moment equations `r
 ```julia
 closed_raw_eqs = moment_closure(raw_eqs, "normal")
 ```
-The function returns [`ClosedMomentEquations`](@ref MomentClosure.ClosedMomentEquations) that consists of both the [`ModelingToolkit.ODESystem`](https://mtk.sciml.ai/stable/systems/ODESystem/) containing all closed moment equations as well as the specific closure functions for each higher order raw moments. The closed ODEs can be visualised using [`format_moment_eqs`](@ref) again:
+The function returns [`ClosedMomentEquations`](@ref MomentClosure.ClosedMomentEquations) that consists of both the [`ModelingToolkit.ODESystem`](https://mtk.sciml.ai/stable/systems/ODESystem/) containing all closed moment equations as well as the specific closure functions for each higher order raw moments. We can use Latexify again to look at the closed ODEs:
 ```julia
-exprs = format_moment_eqs(closed_raw_eqs)
-latexify(exprs, env=:align, cdot=false)
+latexify(closed_raw_eqs)
 ```
 ```math
 \begin{align*}
@@ -136,22 +133,21 @@ latexify(exprs, env=:align, cdot=false)
 \frac{d\mu{_{02}}}{dt} =& c{_2} \mu{_{10}} + 2 c{_2} \mu{_{11}} + c{_1} \mu{_{01}} \mu{_{20}} \Omega^{-2} + 4 c{_1} \mu{_{01}} \mu{_{11}} \Omega^{-2} + 2 c{_1} \mu{_{02}} \mu{_{10}} \Omega^{-2} + 2 c{_1} \mu{_{10}} \mu{_{11}} \Omega^{-2} + 4 c{_1} \Omega^{-2} \mu{_{01}}^{2} \mu{_{10}}^{2} - c{_1} \mu{_{11}} \Omega^{-2} - 4 c{_1} \Omega^{-2} \mu{_{11}}^{2} - 2 c{_1} \mu{_{01}} \Omega^{-2} \mu{_{10}}^{2} - 2 c{_1} \mu{_{02}} \mu{_{20}} \Omega^{-2} - 4 c{_1} \mu{_{10}} \Omega^{-2} \mu{_{01}}^{2}
 \end{align*}
 ```
-The closure functions can also be displayed using [`format_closure`](@ref) together with [Latexify](https://github.com/korsbo/Latexify.jl):
+The closure functions can also be displayed by adding `:closure` argument:
 ```julia
-exprs = format_closure(closed_raw_eqs)
-latexify(exprs, env=:align, cdot=false)
+latexify(exprs, :closure)
 ```
 ```math
 \begin{align*}
-\mu{_{03}} =& 3 \mu{_{01}} \mu{_{02}} - 2 \mu{_{01}}^{3} \\
 \mu{_{30}} =& 3 \mu{_{10}} \mu{_{20}} - 2 \mu{_{10}}^{3} \\
-\mu{_{22}} =& \mu{_{02}} \mu{_{20}} + 2 \mu{_{11}}^{2} + 2 \mu{_{01}} \mu{_{21}} + 2 \mu{_{10}} \mu{_{12}} + 6 \mu{_{01}}^{2} \mu{_{10}}^{2} - 2 \mu{_{02}} \mu{_{10}}^{2} - 2 \mu{_{20}} \mu{_{01}}^{2} - 8 \mu{_{01}} \mu{_{10}} \mu{_{11}} \\
-\mu{_{04}} =& 6 \mu{_{01}}^{4} + 3 \mu{_{02}}^{2} + 4 \mu{_{01}} \mu{_{03}} - 12 \mu{_{02}} \mu{_{01}}^{2} \\
-\mu{_{13}} =& \mu{_{03}} \mu{_{10}} + 3 \mu{_{01}} \mu{_{12}} + 3 \mu{_{02}} \mu{_{11}} + 6 \mu{_{10}} \mu{_{01}}^{3} - 6 \mu{_{11}} \mu{_{01}}^{2} - 6 \mu{_{01}} \mu{_{02}} \mu{_{10}} \\
 \mu{_{21}} =& \mu{_{01}} \mu{_{20}} + 2 \mu{_{10}} \mu{_{11}} - 2 \mu{_{01}} \mu{_{10}}^{2} \\
-\mu{_{31}} =& \mu{_{01}} \mu{_{30}} + 6 \mu{_{01}} \mu{_{10}}^{3} + 3 \mu{_{10}} \mu{_{21}} + 3 \mu{_{11}} \mu{_{20}} - 6 \mu{_{11}} \mu{_{10}}^{2} - 6 \mu{_{01}} \mu{_{10}} \mu{_{20}} \\
 \mu{_{12}} =& \mu{_{02}} \mu{_{10}} + 2 \mu{_{01}} \mu{_{11}} - 2 \mu{_{10}} \mu{_{01}}^{2} \\
-\mu{_{40}} =& 6 \mu{_{10}}^{4} + 3 \mu{_{20}}^{2} + 4 \mu{_{10}} \mu{_{30}} - 12 \mu{_{20}} \mu{_{10}}^{2}
+\mu{_{03}} =& 3 \mu{_{01}} \mu{_{02}} - 2 \mu{_{01}}^{3} \\
+\mu{_{40}} =& 6 \mu{_{10}}^{4} + 3 \mu{_{20}}^{2} + 4 \mu{_{10}} \mu{_{30}} - 12 \mu{_{20}} \mu{_{10}}^{2} \\
+\mu{_{31}} =& \mu{_{01}} \mu{_{30}} + 6 \mu{_{01}} \mu{_{10}}^{3} + 3 \mu{_{10}} \mu{_{21}} + 3 \mu{_{11}} \mu{_{20}} - 6 \mu{_{11}} \mu{_{10}}^{2} - 6 \mu{_{01}} \mu{_{10}} \mu{_{20}} \\
+\mu{_{22}} =& \mu{_{02}} \mu{_{20}} + 2 \mu{_{11}}^{2} + 2 \mu{_{01}} \mu{_{21}} + 2 \mu{_{10}} \mu{_{12}} + 6 \mu{_{01}}^{2} \mu{_{10}}^{2} - 2 \mu{_{02}} \mu{_{10}}^{2} - 2 \mu{_{20}} \mu{_{01}}^{2} - 8 \mu{_{01}} \mu{_{10}} \mu{_{11}} \\
+\mu{_{13}} =& \mu{_{03}} \mu{_{10}} + 3 \mu{_{01}} \mu{_{12}} + 3 \mu{_{02}} \mu{_{11}} + 6 \mu{_{10}} \mu{_{01}}^{3} - 6 \mu{_{11}} \mu{_{01}}^{2} - 6 \mu{_{01}} \mu{_{02}} \mu{_{10}} \\
+\mu{_{04}} =& 6 \mu{_{01}}^{4} + 3 \mu{_{02}}^{2} + 4 \mu{_{01}} \mu{_{03}} - 12 \mu{_{02}} \mu{_{01}}^{2}
 \end{align*}
 ```
 Similarly, we can close central moment equations using
@@ -160,19 +156,18 @@ closed_central_eqs = moment_closure(central_eqs, "normal")
 ```
 and print out the corresponding closure functions:
 ```julia
-exprs = format_closure(closed_central_eqs)
-latexify(exprs, env=:align, cdot=false)
+latexify(closed_central_eqs, :closure)
 ```
 ```math
 \begin{align*}
-M{_{40}} =& 3 M{_{20}}^{2} \\
-M{_{13}} =& 3 M{_{02}} M{_{11}} \\
-M{_{03}} =& 0 \\
 M{_{30}} =& 0 \\
 M{_{21}} =& 0 \\
-M{_{22}} =& M{_{02}} M{_{20}} + 2 M{_{11}}^{2} \\
 M{_{12}} =& 0 \\
+M{_{03}} =& 0 \\
+M{_{40}} =& 3 M{_{20}}^{2} \\
 M{_{31}} =& 3 M{_{11}} M{_{20}} \\
+M{_{22}} =& M{_{02}} M{_{20}} + 2 M{_{11}}^{2} \\
+M{_{13}} =& 3 M{_{02}} M{_{11}} \\
 M{_{04}} =& 3 M{_{02}}^{2}
 \end{align*}
 ```
@@ -180,45 +175,43 @@ Higher order central moments under normal closure take a rather simple form comp
 
 ## Solving Moment Equations
 
-The closed moment equations can be solved numerically using [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl/) that provides a variety of highly-efficient solvers and analysis tools. In order to do so, first we need to specify the values of all system parameters, the initial condition and the timespan to solve over. Then the [`ModelingToolkit.ODESystem`](https://mtk.sciml.ai/stable/systems/ODESystem/) corresponding to the moment equations can be [directly converted](https://mtk.sciml.ai/stable/#Compatible-Numerical-Solvers-1) into an `ODEProblem` which can finally be solved. Let's go through the procedure step-by-step for the closed raw moment equations (`closed_raw_eqs`).
+The closed moment equations can be solved numerically using [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl/) that provides a variety of highly-efficient solvers and analysis tools. In order to do so, first we need to specify the values of all system parameters, the initial condition and the timespan to solve over. Then the [`ModelingToolkit.ODESystem`](https://mtk.sciml.ai/stable/systems/ODESystem/) corresponding to the moment equations can be [directly converted](https://mtk.sciml.ai/stable/#Compatible-Numerical-Solvers-1) into an `ODEProblem` which can finally be solved. Let's go through the procedure step-by-step for the closed raw moment equations (`closed_raw_eqs`). Most of what is covered below is closely based on [this Catalyst tutorial](https://catalyst.sciml.ai/stable/tutorials/using_catalyst/#Mass-Action-ODE-Models).
 
-Note that
-
-First we need to create a map between the symbolic parameter variables and their specified values.
-Knowing the ordering of parameters (accessible using `paramsmap` function) we can do that as follows:
+We start with the parameters. Note that they are ordered as they appear after the `end` statement in the `@reaction_network` macro and this ordering can also be checked using the `paramsmap` function:
+```julia
+paramsmap(rn)
+```
+```julia
+Dict{Sym{ModelingToolkit.Parameter{Real}},Int64} with 5 entries:
+  c₃ => 3
+  Ω  => 5
+  c₄ => 4
+  c₂ => 2
+  c₁ => 1
+```
+We can now create a vector of parameter values as:
 ```julia
 # parameters [c₁, c₂, c₃, c₄, Ω]
 p = [0.9, 2, 1, 1, 100]
-pmap = Pair.(params(rn), p)
 ```
-[See the Catalyst tutorial for a closely related example](https://catalyst.sciml.ai/stable/tutorials/using_catalyst/#Mass-Action-ODE-Models). As an alternative, we can construct `pmap` manually:
-```julia
-@parameters c₁, c₂, c₃, c₄, Ω # if not in scope
-pmap = [c₁ => 0.9,
-        c₂ => 2,
-        c₃ => 1,
-        c₄ => 1,
-        Ω => 100]
-```
-Next we can specify the initial condition. Usually with moment equations we are considering *deterministic* initial conditions so that the molecule numbers at initial time take the specified integer values with probability one. Hence in our case we set $X(t=0) = X_0$ and $Y(t=0) = Y_0$. Probability one implies that initially the means will be equal to the molecule numbers, i.e., $μ_{10}(t=0) = X_0$ and $μ_{01}(t=0) = Y_0$, whereas all higher order raw moments will be products of the corresponding powers of the means, e.g., $μ_{21} = X_0^2 Y_0$. Note that all central moments would be set to zero in this case. To make life easier we use [`deterministic_IC`](@ref) function which, given the initial molecule numbers, automatically constructs the variable mapping under deterministic initial conditions:
+Next, we can specify the initial condition. Usually when working with moment equations we consider *deterministic* initial conditions so that the molecule numbers at initial time take the specified integer values with probability one. We can define the initial molecule numbers as $X(t=0) = X_0$ and $Y(t=0) = Y_0$. Probability one implies that initially the means will be equal to the molecule numbers, i.e., $μ_{10}(t=0) = X_0$ and $μ_{01}(t=0) = Y_0$, whereas all higher order raw moments will be products of the corresponding powers of the means, e.g., $μ_{21} = X_0^2 Y_0$. Note that all central moments would be set to zero in this case. To make life easier we use [`deterministic_IC`](@ref) function which, given the initial molecule numbers, automatically constructs the variable mapping under deterministic initial conditions:
 ```julia
 # initial molecule numbers [X, Y] (order as in speciesmap(rn))
-u₀ = [0, 0]
+u₀ = [1, 1]
 u₀map = deterministic_IC(u₀, closed_raw_eqs)
 ```
 The next ingredient, the time interval to solve on, can be specified simply as:
 ```julia
 tspan = (0., 100.)
 ```
-Now we can create the corresponding `ODEProblem`:
+Now we are able to create the corresponding `ODEProblem`:
 ```julia
-using OrdinaryDiffEq
 oprob = ODEProblem(closed_raw_eqs, u₀map, tspan, pmap)
 ```
-Note that we are using only [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl) as [there is no need to load the whole DifferentialEquations library](https://diffeq.sciml.ai/stable/features/low_dep/#Low-Dependency-Usage).
-
-Finally, we have everything we need to solve the raw moment equations which can be done using any ODE solver [implemented within DifferentialEquations.jl](https://diffeq.sciml.ai/dev/solvers/ode_solve/). We use the default `Tsit5()` solver and then [plot](https://diffeq.sciml.ai/stable/basics/plot/#plot_vars) the obtained mean molecule numbers:
+Finally, we have everything we need to solve the raw moment equations which can be done using any ODE solver [implemented within DifferentialEquations.jl](https://diffeq.sciml.ai/dev/solvers/ode_solve/). We use the default `Tsit5()` solver and then [plot](https://diffeq.sciml.ai/stable/basics/plot/#plot) the obtained mean molecule numbers:
 ```julia
+# using only ODE solvers from DifferentialEquations (faster to load)
+using OrdinaryDiffEq
 sol = solve(oprob, Tsit5(), saveat=0.1)
 
 using Plots
@@ -230,9 +223,35 @@ The obtained moment dynamics show damped oscillations which is the expected aver
 
 ## Stochastic Simulation
 
+To run the SSA for a given reaction network, we build a [DiffEqJump](https://github.com/SciML/DiffEqJump.jl) [`JumpProblem`](https://diffeq.sciml.ai/latest/types/jump_types/) using Gillespie's `Direct` method (other SSA variants are also available, see the [documentation](https://diffeq.sciml.ai/dev/types/jump_types/#Constant-Rate-Jump-Aggregators)). Moreover, in order to run many realisations of the jump process, we define a corresponding [`EnsembleProblem`](https://diffeq.sciml.ai/stable/features/ensemble/#ensemble). All of this can be done as follows:
+```julia
+using DiffEqJump
 
-## Common Problems
+# convert ReactionSystem into JumpSystem
+jsys = convert(JumpSystem, rn, combinatoric_ratelaws=false)
 
-## References
+# create a DiscreteProblem encoding that the molecule numbers are integer-valued
+dprob = DiscreteProblem(jsys, u₀, tspan, p) # same parameters as defined earlier
 
-[1]: D. Schnoerr, G. Sanguinetti, and R. Grima, "Comparison of different moment-closure approximations for stochastic chemical kinetics", The Journal of Chemical Physics 143, 185101 (2015). [https://doi.org/10.1063/1.4934990](https://doi.org/10.1063/1.4934990)
+# create a JumpProblem: specify Gillespie's Direct Method as the solver
+# and SET save_positions to (false, false) as otherwise time of each
+# reaction occurence would be saved (complicating moment estimates)
+jprob = JumpProblem(jsys, dprob, Direct(), save_positions=(false, false))
+
+# define an EnsembleProblem to simulate multiple trajectories
+ensembleprob  = EnsembleProblem(jprob)
+
+# simulate 10000 SSA trajectories
+@time sol_SSA = solve(ensembleprob, SSAStepper(), saveat=0.1, trajectories=10000);
+```
+Now we use the DifferentialEquations [ensemble statistics tools](https://diffeq.sciml.ai/stable/features/ensemble/#Analyzing-an-Ensemble-Experiment) to calculate the SSA mean values and plot them:
+```julia
+using DiffEqBase.EnsembleAnalysis
+
+means_SSA = timeseries_steps_mean(sol_SSA)
+plot!(means_SSA, lw=2, labels=["SSA μ₁₀(t)" "SSA μ₀₁(t)"], linestyle=:dash,
+      linecolor=[1 2], background_color_legend=nothing, legend=:bottomright)
+```
+![Brusselator SSA 1](../assets/brusselator_ssa_1.svg)
+
+The comparison to the SSA reveals that the second-order moment expansion using normal closure captures the correct qualitative behaviour of the Brusselator and provides reasonably accurate moment estimates given this particular parameter set. Note, however, that moment closure approximations can lead to unphysical results and suffer from numerical instabilities, please see the [Common Issues tutorial](common_issues.md) for more details.

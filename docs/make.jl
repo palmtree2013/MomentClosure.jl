@@ -2,7 +2,7 @@ using MomentClosure, ModelingToolkit
 using Documenter
 
 makedocs(;
-    modules=[MomentClosure, ModelingToolkit],
+    modules=[MomentClosure, ModelingToolkit, Symbolics],
     authors="Augustinas Sukys",
     repo="https://github.com/augustinas1/MomentClosure.jl/blob/{commit}{path}#L{line}",
     sitename="MomentClosure.jl",
@@ -21,9 +21,10 @@ makedocs(;
         ],
         "Tutorials" => Any[
             "tutorials/using_momentclosure.md",
+            "tutorials/common_issues.md",
+            "tutorials/geometric_reactions+conditional_closures.md",
             "tutorials/P53_system_example.md",
-            "tutorials/derivative_matching_example.md",
-            "tutorials/gene_network_example.md"
+            "tutorials/derivative_matching_example.md"
         ],
         "API" => Any[
             "api/momentclosure_api.md"

@@ -1,7 +1,7 @@
 function poisson_closure(sys::MomentEquations)
 
-    closure = Dict()
-    closure_exp = Dict()
+    closure = OrderedDict()
+    closure_exp = OrderedDict()
     N = sys.N
 
     # build symbolic expressions of cumulants up to q_order in terms of central/raw moments
@@ -29,15 +29,15 @@ function poisson_closure(sys::MomentEquations)
             else
                 closed_moment = -(K[r]-moments[r])
             end
-            closed_moment = simplify(expand(closed_moment))
+            closed_moment = simplify(closed_moment, polynorm=true)
 
             closure[moments[r]] = closed_moment
             closure_exp[moments[r]] = substitute(closed_moment, closure_exp)
-            closure_exp[moments[r]] = simplify(expand(closure_exp[moments[r]]))
+            closure_exp[moments[r]] = simplify(closure_exp[moments[r]], polynorm=true)
         end
 
     end
 
-    close_eqs(sys, closure_exp, closure)
+    close_eqs(sys, closure_exp, closure, true)
 
 end

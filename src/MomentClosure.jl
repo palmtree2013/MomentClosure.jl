@@ -1,25 +1,25 @@
 module MomentClosure
 
-import Catalyst: species, params, reactions, speciesmap, paramsmap, numspecies, numreactions, numparams,
-                 substoichmat, prodstoichmat
+import Catalyst: species, params, reactions, speciesmap, paramsmap, numspecies,
+				 numreactions, numparams, substoichmat, prodstoichmat
 
 using Reexport
 using ModelingToolkit
-using ModelingToolkit: value
-@reexport using ModelingToolkit: @parameters, @variables
+using ModelingToolkit: value, var_from_nested_derivative
+@reexport using ModelingToolkit: @parameters
+@reexport using Symbolics: @variables
 
 using SciMLBase
 
-using SymbolicUtils
-using SymbolicUtils.Rewriters: Chain, RestartedChain, PassThrough, Prewalk, Postwalk, Fixpoint
-using SymbolicUtils: @rule, @acrule, @ordered_acrule, isnotflat, flatten_term, istree,
-                     needs_sorting, sort_args, is_literal_number, hasrepeats, merge_repeats,
-                     _iszero, pow, one, _isone, zero, symtype, operation, arguments
+using SymbolicUtils.Rewriters: Chain, PassThrough, Prewalk, Fixpoint
+using SymbolicUtils: polynormalize, simplify, operation, arguments, istree
+using SymbolicUtils: @rule, @acrule, isnotflat, flatten_term
 
 using OrderedCollections: OrderedDict
 using Combinatorics: permutations
 using TupleTools: sort
 using Cumulants
+using Latexify
 
 using DocStringExtensions
 
@@ -27,7 +27,6 @@ export generate_central_moment_eqs, generate_raw_moment_eqs, bernoulli_moment_eq
        get_S_mat, propensities, ReactionSystemMod,
        species, params, speciesmap, paramsmap, numspecies, numreactions, numparams,
        moment_closure, deterministic_IC, ODEProblem,
-	   format_moment_eqs, format_closure,
 	   sample_raw_moments, sample_central_moments, sample_cumulants
 
 include("reaction_systems.jl")
