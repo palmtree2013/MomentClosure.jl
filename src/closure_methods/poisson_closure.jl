@@ -1,8 +1,12 @@
-function poisson_closure(sys::MomentEquations)
+function poisson_closure(sys::MomentEquations, binary_vars::Array{Int,1}=Int[])
 
     closure = OrderedDict()
     closure_exp = OrderedDict()
     N = sys.N
+
+    if !isempty(binary_vars)
+        sys = bernoulli_moment_eqs(sys, binary_vars)
+    end
 
     # build symbolic expressions of cumulants up to q_order in terms of central/raw moments
     if typeof(sys) == CentralMomentEquations
@@ -29,11 +33,11 @@ function poisson_closure(sys::MomentEquations)
             else
                 closed_moment = -(K[r]-moments[r])
             end
-            closed_moment = simplify(closed_moment, polynorm=true)
+            closed_moment = simplify(closed_moment, expand=true)
 
             closure[moments[r]] = closed_moment
             closure_exp[moments[r]] = substitute(closed_moment, closure_exp)
-            closure_exp[moments[r]] = simplify(closure_exp[moments[r]], polynorm=true)
+            closure_exp[moments[r]] = simplify(closure_exp[moments[r]], expand=true)
         end
 
     end

@@ -1,7 +1,11 @@
-function zero_closure(sys::MomentEquations)
+function zero_closure(sys::MomentEquations, binary_vars::Array{Int,1}=Int[])
 
     closure = OrderedDict()
     closure_exp = OrderedDict()
+
+    if !isempty(binary_vars)
+        sys = bernoulli_moment_eqs(sys, binary_vars)
+    end
 
     if typeof(sys) == CentralMomentEquations
         for i in sys.iter_q
@@ -14,8 +18,8 @@ function zero_closure(sys::MomentEquations)
         raw_to_central = raw_to_central_moments(sys.N, sys.q_order)
         for i in sys.iter_q
             μ[i] = -(raw_to_central[i]-μ[i])
-            closure[sys.μ[i]] = simplify(μ[i], polynorm=true)
-            μ[i] = simplify(substitute(μ[i], closure_exp), polynorm=true)
+            closure[sys.μ[i]] = simplify(μ[i], expand=true)
+            μ[i] = simplify(substitute(μ[i], closure_exp), expand=true)
             closure_exp[sys.μ[i]] = μ[i]
         end
     end

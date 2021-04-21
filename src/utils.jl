@@ -181,14 +181,16 @@ end
 Given an array of initial molecule numbers and the corresponding moment equations,
 return a mapping of each moment to its initial value under deterministic initial conditions.
 
-TODO: discuss that molecule numbers cannot be set to zero for certain closures
-
 # Notes
 - The means are set to initial molecule numbers (as they take the values specified in
   `u₀` with probability one). The higher order raw moments are products of the corresponding
   powers of the means whereas the higher order central moments are simply zero.
 - The ordering of `u₀` elements must be consistent with the ordering of species
   in the corresponding reaction system (can be checked with the `speciesmap` function).
+- As higher-order moment functions under log-normal, gamma, derivative matching and
+  the conditional closures involve moments raised to negative powers, setting initial
+  molecule numbers of certain species to *zeros* will result in NaN errors when solving
+  the ODEs (the specifics depend on the system at hand).
 """
 function deterministic_IC(u₀::Array{T, 1}, eqs::MomentEquations) where T<:Real
 
@@ -217,6 +219,7 @@ function deterministic_IC(u₀::Array{T, 1}, eqs::MomentEquations) where T<:Real
     vcat(μ_map, moment_map)
 
 end
+
 
 """
     format_moment_eqs(eqs::MomentEquations)
@@ -252,11 +255,23 @@ Given [`ClosedMomentEquations`](@ref), return an array of formatted strings
 representing closure functions for each higher order moment. The symbolic
 expressions are formatted similarly to [`format_moment_eqs`](@ref) and can
 be visualised using [Latexify](https://github.com/korsbo/Latexify.jl).
+
+# Notes
+- `include_all` argument specifies whether all higher-order moments (`include_all=true`)
+  or only those encountered in the moment ODEs specifically (`include_all=false`,
+  the default option) will be returned.
 """
-function format_closure(eqs::ClosedMomentEquations)
+function format_closure(eqs::ClosedMomentEquations; format_all::Bool=false)
     closure = eqs.closure
     exprs = []
-    for i in keys(closure)
+
+    if format_all
+        iter = keys(closure)
+    else
+        iter = setdiff(eqs.open_eqs.odes.states, eqs.odes.states)
+    end
+
+    for i in iter
         eq = closure[i]
         expr = string(i)*" = "*string(eq)
         expr = replace(expr, "(t)"=>"")
@@ -267,7 +282,7 @@ function format_closure(eqs::ClosedMomentEquations)
 end
 
 
-@latexrecipe function f(eqs::MomentEquations, type=:equations; inds::Array)
+@latexrecipe function f(eqs::MomentEquations, type=:equations; print_all=false)
 
     env --> :align
     starred --> true
@@ -276,7 +291,7 @@ end
     if type == :equations
         return format_moment_eqs(eqs)
     elseif type == :closure
-        return format_closure(eqs)
+        return format_closure(eqs, format_all=print_all)
     else
         error("supported arguments are only `:equations` or `:closure`")
     end

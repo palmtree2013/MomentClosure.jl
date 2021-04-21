@@ -7,14 +7,25 @@
 $(TYPEDEF)
 
 A system of chemical reactions. The structure is heavily based on
-`ModelingToolkit.ReactionSystem` and the relevant fields are left
-identical for the sake of familiar users.
+[`ModelingToolkit.ReactionSystem`](https://mtk.sciml.ai/stable/systems/ReactionSystem)
+and the relevant fields are left identical for the sake of familiar users.
 
 # Fields
 $(FIELDS)
 
-# Example
+# Notes
+- The molecule numbers of each chemical species must be explicitly defined as
+  [`Symbolics.@variables`](@ref) and reaction constants as [`ModelingToolkit.@parameters`](@ref).
+  The time, ``t``, must also be initialised as a `ModelingToolkit.parameter`
+  and be used to indicate the time-dependence of species' variables.
+- To specify that a certain reaction product is geometrically distributed, the
+  corresponding stoichiometric matrix element must be a `ModelingToolkit.parameter`
+  denoting the mean of the distribution.
+
+# Example (also see [here](@ref geometric-and-conditional))
 ```julia
+using MomentClosure
+
 @parameters t, c₁, c₂, c₃, c₄, Ω
 @variables X(t), Y(t)
 
